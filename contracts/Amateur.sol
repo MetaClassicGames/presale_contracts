@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/utils/Counters.sol";
  * @author EscuelaCryptoEs
  * @notice This is the contract of the preasale of the Amateur NFT
  */
-contract Amateur is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Burnable {
+contract AmateurE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Burnable {
     using Counters for Counters.Counter;
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
