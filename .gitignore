@@ -9,3 +9,6 @@ typechain
 #Hardhat files
 cache
 artifacts
+
+# Mac OS X files
+.DS_Store
