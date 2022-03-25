@@ -28,6 +28,15 @@ module.exports = {
             enabled: true
           }
         }
+      },
+      //Stable Coin
+      {
+        version : "0.6.12",
+        settings : {
+          optimizer : {
+            enabled : true
+          }
+        }
       }
     ]
   },
