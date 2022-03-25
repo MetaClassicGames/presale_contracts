@@ -8,49 +8,40 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
 interface edicionCero {
-    function setContadorBreeding(uint id, uint cantidad) external;
+    function setContadorBreeding(uint id, address propietario) external;
+    function getContadorBreeding(uint id) view external returns(uint);
 }
 
 contract TokenEd1 is ERC721, ERC721Enumerable, Ownable {
+    // Address de la interfaz
     address private ed0;
 
     using Counters for Counters.Counter;
-
     Counters.Counter private _tokenIdCounter;
 
+    // Recibe el address de la interfaz por parámetro
     constructor(address addr) ERC721("MyTokenEd1", "MTK1") {
         ed0 = addr;
+    }
+
+    // Función que hace el breeding
+    function reproduce(uint idToken1, uint idToken2) public {
+        // Comprueba el contador Breeding de los NFT de edición 0
+        require(edicionCero(ed0).getContadorBreeding(idToken1) < 2, "El token 1 es esteril");
+        require(edicionCero(ed0).getContadorBreeding(idToken2) < 2, "El token 2 es esteril");
+
+        // Mintea un nuevo NFT con address del sender
+        safeMint(msg.sender);
+        
+        // Aumenta el contador breeding de los NFT de edición 0
+        edicionCero(ed0).setContadorBreeding(idToken1, msg.sender);
+        edicionCero(ed0).setContadorBreeding(idToken2, msg.sender);
     }
     
     function safeMint(address to) public onlyOwner {
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
-    }
-
-    // Función que hace el breeding
-    function reproduce(uint idToken1, uint idToken2) public {
-        // TODO: ASI LLAMO A LA ED 0
-        edicionCero(ed0).setContadorBreeding(id, cantidad);
-
-        // Comprueba que los NFT existan
-        require(_exists(idToken1), "El token 1 no existe");
-        require(_exists(idToken2), "El token 2 no existe");
-
-        // Comprueba el dueño de los NFT
-        require(msg.sender == ownerOf(idToken1), "El sender no es propietario del token 1");
-        require(msg.sender == ownerOf(idToken2), "El sender no es propietario del token 2");
-
-        // Comprueba el contador Breeding de los NFT
-        require(contadorBreeding[idToken1] < 2, "El token 1 es esteril");
-        require(contadorBreeding[idToken2] < 2, "El token 2 es esteril");
-
-        // Mintea un nuevo NFT con address del sender
-        safeMint(msg.sender);
-        
-        // Aumenta el contador breeding de los tokens
-        contadorBreeding[idToken1]++;
-        contadorBreeding[idToken2]++;
     }
 
     // The following functions are overrides required by Solidity.
