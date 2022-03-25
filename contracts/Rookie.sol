@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-
 import "hardhat/console.sol";
 
 /**
@@ -17,25 +16,30 @@ import "hardhat/console.sol";
  * @notice This is the contract of the preasale of the Rookie NFT
  */
 contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Burnable {
+    // Token counter
     using Counters for Counters.Counter;
+    Counters.Counter private _tokenIdCounter;
 
+    // Roles
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant ADMIN_ROLE  = keccak256("ADMIN_ROLE");
     
-    Counters.Counter private _tokenIdCounter;
+    // URI of the tokens
     string public baseURI = "https://www.metaclassicgames.com/tokens/ed0/0.json";
+    
     // uint8 fixed to 255 max
     mapping(address=>uint8) private _privateSell;
     uint64 private endOfPS;
     
     // TODO: Needs to add the require to not allowing minting without checking 
-    // require(tokenId < _maxSupply - _soldPrivately, "Max supply alcanzado");
+    // require(tokenId < _maxSupply - _soldPrivately, "Max supply reached");
     uint16 private constant _maxSupply = 1000;
     uint16 private _soldPrivately;
 
-    //TODO BREEDING
-    //mapping(uint256=>uint256) private steriles;
+    // TODO: Breeding, everything of the ED0 is done except set the breedingCounter
+    // to 0 when a new token is minted. _breedingCounter[tokenId] = 0;
+    mapping(uint => uint) private _breedingCounter;
 
     /** 
      * @notice This is the contructor of the contract
@@ -62,8 +66,27 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
             _soldPrivately += _quantities[i];
         }
 
-        // Start in 1
+        // Starts in 1
         _tokenIdCounter.increment();
+    }
+
+    /**
+     * @dev Requires that who calls the function is the owner of the token and
+     * adds one to the breeding counter of the token provided.
+     * @param id Is the id of the token to check
+     * @param owner Is the id address of the sender of the contract ED 1
+     */
+    function setContadorBreeding(uint id, address owner) external {
+        require(owner == ownerOf(id), "The sender isnt the owner of the token");
+        _breedingCounter[id]++;
+    }
+
+    /**
+     * @dev Returns the breeding counter of the token provided.
+     * @param id Is the id of the token to check
+     */
+    function getContadorBreeding(uint id) view external returns(uint) {
+        return _breedingCounter[id];
     }
 
     /**
