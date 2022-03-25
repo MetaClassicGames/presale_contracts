@@ -28,6 +28,11 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
     // uint8 fixed to 255 max
     mapping(address=>uint8) private _privateSell;
     uint64 private endOfPS;
+    
+    // TODO: Needs to add the require to not allowing minting without checking 
+    // require(tokenId < _maxSupply - _soldPrivately, "Max supply alcanzado");
+    uint16 private constant _maxSupply = 1000;
+    uint16 private _soldPrivately;
 
     //TODO BREEDING
     //mapping(uint256=>uint256) private steriles;
@@ -54,6 +59,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
         for (uint8 i = 0; i < _beneficiaries.length; i++) {
             require(_beneficiaries[i] != address(0), "Address shouldn't be zero");
             _privateSell[_beneficiaries[i]] = _quantities[i];
+            _soldPrivately += _quantities[i];
         }
 
         // Start in 1
