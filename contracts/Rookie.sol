@@ -38,19 +38,25 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
     
     // privateSell config
     mapping(address=>uint8) private _privateSell;
-    uint64 private endOfPS;
+    uint64 private _endOfPS;
 
     // NFT Config
     uint16 private constant _maxSupply = 1000;
     uint16 private _soldPrivately;
-    uint256 public _price = 50000000000000000000;
+    // TODO: Change in deploy
+    uint256 public price = 50000000000000000000;
     IERC20 public stableCoin;
 
     // Breeding
     mapping(uint256 => uint256) private _breedingCounter;
+    address private _child;
 
 
     // Modifiers
+    /**
+     * @notice This function checks if sender is into private sell
+     * @param _beneficiary the address to check
+     */
     modifier isBeneficiary(address _beneficiary) {
         require(_beneficiary != address(0), "RKE0: Address shouldn't be zero");
         require(_privateSell[_beneficiary] > 0, "RKE0: Beneficiary isn't into private sell");
@@ -75,7 +81,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
 
         // End of PS
         require(_timestampEndOfPS > block.timestamp);
-        endOfPS = _timestampEndOfPS;
+        _endOfPS = _timestampEndOfPS;
 
         // Private Sell
         require(_beneficiaries.length == _quantities.length, "RKE0: Missmatch lengths");
@@ -90,15 +96,18 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
 
         //Stablecoin
         stableCoin = IERC20(_stableCoin);
+
+        //Child contract
+        _child = address(0);
     }
 
-    // **** SETTER SECTION ****
+    // **** SETTER & GETTER SECTION ****
 
     /**
      * @notice Setter for stablecoin
      * @param _newStableCoin The address of the new stablecoin
      */
-    function setNewStableCoin(address _newStableCoin) public onlyRole(ADMIN_ROLE) {
+    function setNewStableCoin(address _newStableCoin) public whenNotPaused onlyRole(ADMIN_ROLE) {
         stableCoin = IERC20(_newStableCoin);
     }
 
@@ -106,16 +115,32 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @notice Setter for NFT price
      * @param _newPrice The new price of NFT
      */
-    function setNewPrice(uint256 _newPrice) public onlyRole(ADMIN_ROLE) {
-        _price = _newPrice;
+    function setNewPrice(uint256 _newPrice) public whenNotPaused onlyRole(ADMIN_ROLE) {
+        price = _newPrice;
     } 
 
     /**
      * @notice This setter changes the presale final date
      * @param _newTS The new ts for final date of presale
      */
-    function setNewDate(uint64 _newTS) public onlyRole(ADMIN_ROLE) {
-        endOfPS = _newTS;
+    function setNewDate(uint64 _newTS) public whenNotPaused onlyRole(ADMIN_ROLE) {
+        _endOfPS = _newTS;
+    }
+
+    /**
+     * @notice Setter for child contract ED1
+     * @param _contractAddress the ED1 contract address
+     */
+    function setChildContractAddress(address _contractAddress) public onlyRole(ADMIN_ROLE) {
+        _child = _contractAddress;
+    }
+
+    /**
+     * @notice Getter for child variable
+     * @return child the contract address of ED1
+     */
+    function getChildContractAddress() public view returns(address) {
+        return _child;
     }
 
     // **** BREEDING SECTION ****
@@ -123,11 +148,11 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
     /**
      * @dev Requires that who calls the function is the owner of the token and
      * adds one to the breeding counter of the token provided. 
-     * TODO: OJO!!!!!!! ESTO HAY QUE CONTROLAR Q SEA LLAMABLE SOLO DESDE ED1
      * @param id Is the id of the token to check
      * @param owner Is the id address of the sender of the contract ED 1
      */
     function setCounterBreeding(uint256 id, address owner) external {
+        require(msg.sender == _child, "RKE0: Caller isnt the child contract");
         require(owner == ownerOf(id), "RKE0: The sender isnt the owner of the token");
         _breedingCounter[id]++;
     }
@@ -183,6 +208,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
 
     /// @dev PREGUNTAR SI VAN A QUERER SETEAR NUEVAS CANTIDADES!!!!!!!!!!!
     function setNewPrivateSell(address _beneficiary, uint8 _quantity) public onlyRole(ADMIN_ROLE) {
+        require(_tokenIdCounter.current() + (_soldPrivately + _quantity) <= _maxSupply, "RKE0: Max supply reached");
         require(_beneficiary != address(0), "RKE0: Address shouldn't be zero");
         _privateSell[_beneficiary] = _quantity;
         _soldPrivately += _quantity;
@@ -194,14 +220,12 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @param _beneficiary user address
      */
     function doPrivateSell(address _beneficiary) public nonReentrant isBeneficiary(_beneficiary) {
-        require(block.timestamp >= endOfPS, "RKE0: Presale is not over yet");
+        require(block.timestamp >= _endOfPS, "RKE0: Presale is not over yet");
 
         for(uint8 i = 0; i < _privateSell[_beneficiary]; i++){
             uint256 tokenId = _tokenIdCounter.current();
             _tokenIdCounter.increment();
             _safeMint(_beneficiary, tokenId);
-            // TODO: Creo que esto hay que quitarlo. Los mappings se inician a 0 default.
-            _breedingCounter[tokenId] = 0;
         }
         _privateSell[_beneficiary] = 0;
     }
@@ -213,19 +237,17 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @param _to The address of minter
      */
     function mintRookie(address _to) public nonReentrant whenNotPaused {
-        require(IERC20(stableCoin).balanceOf(_to) >= _price, "USDC: Insufficient funds");
-        SafeERC20.safeTransferFrom(IERC20(stableCoin), _to, address(this), _price);
+        require(IERC20(stableCoin).balanceOf(_to) >= price, "USDC: Insufficient funds");
+        SafeERC20.safeTransferFrom(IERC20(stableCoin), _to, address(this), price);
         
         // Mint
         uint256 tokenId = _tokenIdCounter.current();
-        _tokenIdCounter.increment();
-
         require(tokenId < _maxSupply - _soldPrivately, "RKE0: Max supply reached");
-        _safeMint(_to, tokenId);
-        // TODO: Creo que esto hay que quitarlo. Los mappings se inician a 0 default.
-        _breedingCounter[tokenId] = 0;
 
-        emit RookieMinted(tokenId, _to, _price);
+        _tokenIdCounter.increment();     
+        _safeMint(_to, tokenId);
+
+        emit RookieMinted(tokenId, _to, price);
     }
 
     /**
@@ -236,6 +258,25 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
+    }
+
+    /**
+     * @notice Withdraw funds in stableCoin from this contract to an address
+     * @param _to the address to send the funds
+     */
+    function withdrawFunds(address _to) public onlyRole(ADMIN_ROLE) {
+        require(_to != address(0), "RKE0: Address shouldn't be zero");
+        SafeERC20.safeTransferFrom(IERC20(stableCoin), address(this), _to, IERC20(stableCoin).balanceOf(address(this)));
+    }
+
+    /**
+     * @notice Withdraw native funds in wei from this contract to an address
+     * @dev This PS contract should never have an wei balance (JIC)
+     * @param _to the address to send the funds
+     */
+    function nativeWithdraw(address _to) public payable onlyRole(ADMIN_ROLE) {
+        require(_to != address(0), "RKE0: Address shouldn't be zero");
+        payable(_to).transfer(address(this).balance);
     }
 
     // **** EXTRA FUNCTIONS SECTION ****
