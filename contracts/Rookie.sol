@@ -65,6 +65,8 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
 
     // Events
     event RookieMinted(uint256 indexed tokenId, address to, uint256);
+    // TODO: evento venta privada
+    // TODO: eventos setters
 
     /** 
      * @notice This is the contructor of the contract
@@ -76,7 +78,6 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
     constructor(address[] memory _beneficiaries, uint8[] memory _quantities, uint64 _timestampEndOfPS, address _stableCoin) ERC721("RookieEd0", "RKE0") {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(PAUSER_ROLE, msg.sender);
-        _grantRole(MINTER_ROLE, address(0)); // No one can mint more tokens
         _grantRole(ADMIN_ROLE, msg.sender);
 
         // End of PS
@@ -107,7 +108,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @notice Setter for stablecoin
      * @param _newStableCoin The address of the new stablecoin
      */
-    function setNewStableCoin(address _newStableCoin) public whenNotPaused onlyRole(ADMIN_ROLE) {
+    function setNewStableCoin(address _newStableCoin) public onlyRole(ADMIN_ROLE) {
         stableCoin = IERC20(_newStableCoin);
     }
 
@@ -115,7 +116,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @notice Setter for NFT price
      * @param _newPrice The new price of NFT
      */
-    function setNewPrice(uint256 _newPrice) public whenNotPaused onlyRole(ADMIN_ROLE) {
+    function setNewPrice(uint256 _newPrice) public onlyRole(ADMIN_ROLE) {
         price = _newPrice;
     } 
 
@@ -123,7 +124,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @notice This setter changes the presale final date
      * @param _newTS The new ts for final date of presale
      */
-    function setNewDate(uint64 _newTS) public whenNotPaused onlyRole(ADMIN_ROLE) {
+    function setNewDate(uint64 _newTS) public onlyRole(ADMIN_ROLE) {
         _endOfPS = _newTS;
     }
 
@@ -161,7 +162,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @notice Returns the breeding counter of the token provided.
      * @param id Is the id of the token to check
      */
-    function getCounterBreeding(uint256 id) view external returns(uint256) {
+    function getCounterBreeding(uint256 id) view public returns(uint256) {
         return _breedingCounter[id];
     }
 
@@ -206,7 +207,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
         return _privateSell[_beneficiary];
     }
 
-    /// @dev PREGUNTAR SI VAN A QUERER SETEAR NUEVAS CANTIDADES!!!!!!!!!!!
+    /// @dev TODO: PREGUNTAR SI VAN A QUERER SETEAR NUEVAS CANTIDADES!!!!!!!!!!!
     function setNewPrivateSell(address _beneficiary, uint8 _quantity) public onlyRole(ADMIN_ROLE) {
         require(_tokenIdCounter.current() + (_soldPrivately + _quantity) <= _maxSupply, "RKE0: Max supply reached");
         require(_beneficiary != address(0), "RKE0: Address shouldn't be zero");
@@ -217,17 +218,16 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
     /**
      * @notice This function makes a private sell to the beneficiary if is into private sell whitelist
      * @dev Near to surpase gas limit when quantity stored into mapping >= 200
-     * @param _beneficiary user address
      */
-    function doPrivateSell(address _beneficiary) public nonReentrant isBeneficiary(_beneficiary) {
+    function doPrivateSell() public whenNotPaused nonReentrant isBeneficiary(msg.sender) {
         require(block.timestamp >= _endOfPS, "RKE0: Presale is not over yet");
 
-        for(uint8 i = 0; i < _privateSell[_beneficiary]; i++){
+        for(uint8 i = 0; i < _privateSell[msg.sender]; i++){
             uint256 tokenId = _tokenIdCounter.current();
             _tokenIdCounter.increment();
-            _safeMint(_beneficiary, tokenId);
+            _safeMint(msg.sender, tokenId);
         }
-        _privateSell[_beneficiary] = 0;
+        _privateSell[msg.sender] = 0;
     }
 
     // **** NFT SECTION ****
