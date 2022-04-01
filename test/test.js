@@ -19,6 +19,8 @@ const amateurPrice  = 70;
 const proPrice      = 100;
 const legendPrice   = 150;
 
+let te1;
+
 // Add days to timestamp
 Date.prototype.addDays = function(days) {
   var date = new Date(this.valueOf());
@@ -67,7 +69,6 @@ describe("Deploy", function(){
       legendContract = await Legend.deploy();
       await legendContract.deployed();
 
-      
     }
     catch(ex){
       console.error(ex);
@@ -101,7 +102,7 @@ describe("Rookie", function () {
   });
 
   it("Should revert, PS is not over", async function () {
-    await expect(rookieContract.doPrivateSell(B1.address),'REVERT mint privateSell').to.be.revertedWith("RKE0: Presale is not over yet");
+    await expect(rookieContract.connect(B1).doPrivateSell(),'REVERT mint privateSell').to.be.revertedWith("RKE0: Presale is not over yet");
   });
 
   it("Should do a private sell to B1", async function () {
@@ -110,12 +111,12 @@ describe("Rookie", function () {
     const endOfPS = ((today - (today % 1000)) / 1000) - 20
     await expect(rookieContract.setNewDate(endOfPS),'Set new PS date').not.to.be.reverted;
 
-    await expect(rookieContract.doPrivateSell(B1.address),'privateSell').not.to.be.reverted;
+    await expect(rookieContract.connect(B1).doPrivateSell(),'privateSell').not.to.be.reverted;
     expect(await rookieContract.balanceOf(B1.address),'Check new balance of B1').to.equal(quantity);
   });
 
   it("Should revert when try to do a private sell to B1 again", async function () {
-    await expect(rookieContract.doPrivateSell(B1.address),'privateSell').to.be.revertedWith("RKE0: Beneficiary isn't into private sell");
+    await expect(rookieContract.connect(B1).doPrivateSell(),'privateSell').to.be.revertedWith("RKE0: Beneficiary isn't into private sell");
   });
 
   it("Should return the URI", async function(){
@@ -183,6 +184,53 @@ describe("Rookie", function () {
     expect(realBalance,'Balance of rookie owner').to.equal(balanceExp);
   });
 
+  it("Should revert when safeMint function is called", async function(){
+    await expect(rookieContract.safeMint(owner.address),'REVERT: Mint').to.be.reverted;
+  });
+
+  it("Should revert when B1 address try to call setCounterBreeding", async function(){
+    expect(await rookieContract.getCounterBreeding(1),'getCounterBreeding').to.equal(0);
+    await expect(rookieContract.setCounterBreeding(1, B1.address),'REVERT: setCounterBreeding').to.be.revertedWith("RKE0: Caller isnt the child contract")
+  });
+
+  it("Set new child contract", async function(){
+    try{
+      const TE1 = await ethers.getContractFactory("TokenEd1");
+      te1 = await TE1.deploy(rookieContract.address);
+      await te1.deployed();
+    }
+    catch(ex){
+      console.error(ex);
+    }
+    await expect(rookieContract.setChildContractAddress(te1.address),'setChildCA').not.to.be.reverted;
+  });
+
+  it("Reproduce 1 and 2", async function(){
+    expect(await rookieContract.getCounterBreeding(1),'getCounterBreeding').to.equal(0);
+    expect(await rookieContract.getCounterBreeding(2),'getCounterBreeding').to.equal(0);
+
+    await expect(te1.connect(B1).reproduce(1,2),'Breed').to.emit(te1, "MintedByBreed");
+
+    expect(await rookieContract.getCounterBreeding(1),'getCounterBreedingAfterReproduce1').to.equal(1);
+    expect(await rookieContract.getCounterBreeding(2),'getCounterBreedingAfterReproduce1').to.equal(1);
+  });
+
+  it("Should revert when 1 and 2 calls reproduce when it calls again", async function(){
+    await expect(te1.connect(B1).reproduce(1,2),'Breed').to.emit(te1, "MintedByBreed");
+
+    expect(await rookieContract.getCounterBreeding(1),'getCounterBreedingAfterReproduce1').to.equal(2);
+    expect(await rookieContract.getCounterBreeding(2),'getCounterBreedingAfterReproduce1').to.equal(2);
+
+    await expect(te1.connect(B1).reproduce(1,2),'REVERT: BREED').to.be.revertedWith("MTK1: Token 1 is steril");
+  });
+
+  it("Should revert when B4 try to set new child contract to hack contract", async function(){
+    // Don't works
+    rookieContract._child = B4.address;
+    // OK
+    await expect(rookieContract.connect(B4).setChildContractAddress(B4.address),'REVERT: setChildCA').to.be.reverted;
+    await expect(rookieContract.connect(B4).setCounterBreeding(3,B4.address),'REVERT: setCounterBreeding').to.be.reverted;
+  });
 });
 
 /*
