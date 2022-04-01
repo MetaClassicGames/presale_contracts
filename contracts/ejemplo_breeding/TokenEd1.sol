@@ -4,20 +4,23 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
+import "hardhat/console.sol";
+
 interface edicionCero {
-    function setContadorBreeding(uint id, address propietario) external;
-    function getContadorBreeding(uint id) view external returns(uint);
+    function getCounterBreeding(uint256 id) view external returns(uint256);
+    function setCounterBreeding(uint256 id, address owner) external;
 }
 
-contract TokenEd1 is ERC721, ERC721Enumerable, Ownable {
+contract TokenEd1 is ERC721, ERC721Enumerable {
     // Address de la interfaz
     address private ed0;
 
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdCounter;
+
+    event MintedByBreed(address to, uint256 idToken1, uint256 idToken2);
 
     // Recibe el address de la interfaz por parámetro
     constructor(address addr) ERC721("MyTokenEd1", "MTK1") {
@@ -27,18 +30,20 @@ contract TokenEd1 is ERC721, ERC721Enumerable, Ownable {
     // Función que hace el breeding
     function reproduce(uint idToken1, uint idToken2) public {
         // Comprueba el contador Breeding de los NFT de edición 0
-        require(edicionCero(ed0).getContadorBreeding(idToken1) < 2, "El token 1 es esteril");
-        require(edicionCero(ed0).getContadorBreeding(idToken2) < 2, "El token 2 es esteril");
+        require(edicionCero(ed0).getCounterBreeding(idToken1) < 2, "MTK1: Token 1 is steril");
+        require(edicionCero(ed0).getCounterBreeding(idToken2) < 2, "MTK1: Token 2 is steril");
 
         // Mintea un nuevo NFT con address del sender
-        safeMint(msg.sender);
+        __safeMint(msg.sender);
         
         // Aumenta el contador breeding de los NFT de edición 0
-        edicionCero(ed0).setContadorBreeding(idToken1, msg.sender);
-        edicionCero(ed0).setContadorBreeding(idToken2, msg.sender);
+        edicionCero(ed0).setCounterBreeding(idToken1, msg.sender);
+        edicionCero(ed0).setCounterBreeding(idToken2, msg.sender);
+
+        emit MintedByBreed(msg.sender, idToken1, idToken2);
     }
     
-    function safeMint(address to) public onlyOwner {
+    function __safeMint(address to) private {
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
