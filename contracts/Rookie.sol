@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.8;
 
-// Stablecoin imp
+// Stablecoin implementation
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -44,7 +44,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
     uint16 private constant _maxSupply = 1000;
     uint16 private _soldPrivately;
     // TODO: Change in deploy
-    uint256 public price = 50000000000000000000;
+    uint256 public price = 10000000000000000000;
     IERC20 public stableCoin;
 
     // Breeding
@@ -109,6 +109,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @param _newStableCoin The address of the new stablecoin
      */
     function setNewStableCoin(address _newStableCoin) public onlyRole(ADMIN_ROLE) {
+        require(_newStableCoin != address(0), "RKE0: StableCoin address shouldn't be zero address");
         stableCoin = IERC20(_newStableCoin);
     }
 
@@ -117,6 +118,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @param _newPrice The new price of NFT
      */
     function setNewPrice(uint256 _newPrice) public onlyRole(ADMIN_ROLE) {
+        require(_newPrice > 0, "RKE0: Price must be greater than 0 wei");
         price = _newPrice;
     } 
 
@@ -125,6 +127,8 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @param _newTS The new ts for final date of presale
      */
     function setNewDate(uint64 _newTS) public onlyRole(ADMIN_ROLE) {
+        // TODO: PARA PODER HACER VENTA PRIVADA EN TESTING
+        // require(_newTS >= block.timestamp, "RKE0: Date must be greater than now");
         _endOfPS = _newTS;
     }
 
@@ -133,15 +137,25 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @param _contractAddress the ED1 contract address
      */
     function setChildContractAddress(address _contractAddress) public onlyRole(ADMIN_ROLE) {
+        require(_contractAddress != address(0), "RKE0: Zero address shouldn't be child contract");
         _child = _contractAddress;
     }
 
     /**
      * @notice Getter for child variable
      * @return child the contract address of ED1
+     * TODO: REVISAR LOS GETTERS
      */
     function getChildContractAddress() public view returns(address) {
         return _child;
+    }
+
+    function getEndOfPS() public view returns(uint64) {
+        return _endOfPS;
+    }
+
+    function getPrivatelySellCount() public view returns(uint16){
+        return _soldPrivately;
     }
 
     // **** BREEDING SECTION ****
@@ -237,6 +251,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @param _to The address of minter
      */
     function mintRookie(address _to) public nonReentrant whenNotPaused {
+        require(_to != address(0), "RKE0: Address shouldn't be zero");
         require(IERC20(stableCoin).balanceOf(_to) >= price, "USDC: Insufficient funds");
         SafeERC20.safeTransferFrom(IERC20(stableCoin), _to, address(this), price);
         
@@ -256,6 +271,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      */
     function safeMint(address to) public onlyRole(MINTER_ROLE) {
         uint256 tokenId = _tokenIdCounter.current();
+        require(tokenId < _maxSupply - _soldPrivately, "RKE0: Max supply reached");
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
     }
@@ -264,9 +280,9 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @notice Withdraw funds in stableCoin from this contract to an address
      * @param _to the address to send the funds
      */
-    function withdrawFunds(address _to) public onlyRole(ADMIN_ROLE) {
+    function withdrawFunds(address _to) public nonReentrant onlyRole(ADMIN_ROLE) {
         require(_to != address(0), "RKE0: Address shouldn't be zero");
-        SafeERC20.safeTransferFrom(IERC20(stableCoin), address(this), _to, IERC20(stableCoin).balanceOf(address(this)));
+        IERC20(stableCoin).transfer(_to, IERC20(stableCoin).balanceOf(address(this)));
     }
 
     /**
@@ -274,7 +290,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @dev This PS contract should never have an wei balance (JIC)
      * @param _to the address to send the funds
      */
-    function nativeWithdraw(address _to) public payable onlyRole(ADMIN_ROLE) {
+    function nativeWithdraw(address _to) public payable nonReentrant onlyRole(ADMIN_ROLE) {
         require(_to != address(0), "RKE0: Address shouldn't be zero");
         payable(_to).transfer(address(this).balance);
     }
