@@ -23,11 +23,11 @@ const rookiePrice = 50;
 let te1;
 
 // Add days to timestamp
-Date.prototype.addDays = function (days) {
-  var date = new Date(this.valueOf());
-  date.setDate(date.getDate() + days);
-  return date;
-};
+// Date.prototype.addDays = function (days) {
+//   var date = new Date(this.valueOf());
+//   date.setDate(date.getDate() + days);
+//   return date;
+// };
 
 //DEPLOY
 describe("Deploy", function () {
@@ -46,10 +46,10 @@ describe("Deploy", function () {
       quantities = Array(beneficiaries.length).fill(quantity);
       price = 100;
 
-      const days = 1;
-      let today = new Date();
-      today = today.addDays(days).getTime();
-      const limit = (today - (today % 1000)) / 1000;
+      // const days = 1;
+      // let today = new Date();
+      // today = today.addDays(days).getTime();
+      // const limit = (today - (today % 1000)) / 1000;
 
       //USDC contract
       const USDC = await ethers.getContractFactory("USDC");
@@ -61,7 +61,6 @@ describe("Deploy", function () {
       rookieContract = await Rookie.deploy(
         beneficiaries,
         quantities,
-        limit,
         ethers.constants.AddressZero,
         price
       );
@@ -116,7 +115,7 @@ describe("Presale Contract Test Suite", function () {
       "REVERT: ROLES"
     ).to.be.reverted;
     // R6
-    await expect(rookieContract.connect(admin).setNewDate(1), "REVERT: ROLES")
+    await expect(rookieContract.connect(admin).setEndOfPS(true), "REVERT: ROLES")
       .to.be.reverted;
     // R8
     await expect(
@@ -198,24 +197,30 @@ describe("Presale Contract Test Suite", function () {
     expect(expected, "New price succesfully seted").to.equal(real);
   });
 
-  it("setNewDate fx", async function () {
-    const days = 60;
-    let today = new Date();
-    today = today.addDays(days).getTime();
-    const newTS = (today - (today % 1000)) / 1000;
+  it("setEndOfPS fx", async function () {
+    // const days = 60;
+    // let today = new Date();
+    // today = today.addDays(days).getTime();
+    // const newTS = (today - (today % 1000)) / 1000;
 
-    // R7 (Works but for doPrivateSell should be commented)
-    // await expect(rookieContract.connect(admin).setNewDate(1648833509),'REVERT: ts < actual').to.be.revertedWith("RKE0: Date must be greater than now");
+    // R7 (no timestamp)
+    // await expect(
+    //   rookieContract.connect(admin).setEndOfPS(false),
+    //   'REVERT: ts < actual'
+    // ).to.be.revertedWith(
+    //   "RKE0: Date must be greater than now"
+    // );
+
     // V3
     await expect(
-      rookieContract.connect(admin).setNewDate(newTS),
-      "New date set"
+      rookieContract.connect(admin).setEndOfPS(false),
+      "New value set"
     ).not.to.be.reverted;
 
     const real = await rookieContract.getEndOfPS();
 
     //* Success criteria
-    expect(newTS, "New ts succesfully seted").to.equal(real);
+    expect(false, "New ts succesfully seted").to.equal(real);
   });
 
   it("setChildContractAddress fx", async function () {
@@ -410,11 +415,8 @@ describe("Presale Contract Test Suite", function () {
   });
 
   it("Should do a private sell to B1", async function () {
-    //New TS endOfPS
-    const today = new Date();
-    const endOfPS = (today - (today % 1000)) / 1000 - 20;
     await expect(
-      rookieContract.connect(admin).setNewDate(endOfPS),
+      rookieContract.connect(admin).setEndOfPS(true),
       "Set new PS date"
     ).not.to.be.reverted;
 
