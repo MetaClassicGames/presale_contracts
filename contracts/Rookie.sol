@@ -44,7 +44,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
     uint16 private constant _maxSupply = 1000;
     uint16 private _soldPrivately;
     // TODO: Change in deploy
-    uint256 public price = 10000000000000000000;
+    uint256 public price;
     IERC20 public stableCoin;
 
     // Breeding
@@ -75,7 +75,8 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @param _quantities the total of NFTs booked
      * @param _timestampEndOfPS the ts for the end of presale
      */
-    constructor(address[] memory _beneficiaries, uint8[] memory _quantities, uint64 _timestampEndOfPS, address _stableCoin) ERC721("RookieEd0", "RKE0") {
+    constructor(address[] memory _beneficiaries, uint8[] memory _quantities, uint64 _timestampEndOfPS, address _stableCoin, uint256 _newPrice) 
+    ERC721("RookieEd0", "RKE0") {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(PAUSER_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
@@ -100,24 +101,27 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
 
         //Child contract
         _child = address(0);
+
+        // Price 
+        price = _newPrice;
     }
 
     // **** SETTER & GETTER SECTION ****
 
     /**
      * @notice Setter for stablecoin
-     * @param _newStableCoin The address of the new stablecoin
+     * @param newStablecoin The address of the new stablecoin
      */
-    function setNewStableCoin(address _newStableCoin) public onlyRole(ADMIN_ROLE) {
-        require(_newStableCoin != address(0), "RKE0: StableCoin address shouldn't be zero address");
-        stableCoin = IERC20(_newStableCoin);
+    function setNewStableCoin(address newStablecoin) external onlyRole(ADMIN_ROLE) {
+        require(newStablecoin != address(0), "RKE0: StableCoin address shouldn't be zero address");
+        stableCoin = IERC20(newStablecoin);
     }
 
     /**
      * @notice Setter for NFT price
      * @param _newPrice The new price of NFT
      */
-    function setNewPrice(uint256 _newPrice) public onlyRole(ADMIN_ROLE) {
+    function setNewPrice(uint256 _newPrice) external onlyRole(ADMIN_ROLE) {
         require(_newPrice > 0, "RKE0: Price must be greater than 0 wei");
         price = _newPrice;
     } 
@@ -126,7 +130,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @notice This setter changes the presale final date
      * @param _newTS The new ts for final date of presale
      */
-    function setNewDate(uint64 _newTS) public onlyRole(ADMIN_ROLE) {
+    function setNewDate(uint64 _newTS) external onlyRole(ADMIN_ROLE) {
         // TODO: PARA PODER HACER VENTA PRIVADA EN TESTING
         // require(_newTS >= block.timestamp, "RKE0: Date must be greater than now");
         _endOfPS = _newTS;
@@ -136,7 +140,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @notice Setter for child contract ED1
      * @param _contractAddress the ED1 contract address
      */
-    function setChildContractAddress(address _contractAddress) public onlyRole(ADMIN_ROLE) {
+    function setChildContractAddress(address _contractAddress) external onlyRole(ADMIN_ROLE) {
         require(_contractAddress != address(0), "RKE0: Zero address shouldn't be child contract");
         _child = _contractAddress;
     }
@@ -146,15 +150,15 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @return child the contract address of ED1
      * TODO: REVISAR LOS GETTERS
      */
-    function getChildContractAddress() public view returns(address) {
+    function getChildContractAddress() external view returns(address) {
         return _child;
     }
 
-    function getEndOfPS() public view returns(uint64) {
+    function getEndOfPS() external view returns(uint64) {
         return _endOfPS;
     }
 
-    function getPrivatelySellCount() public view returns(uint16){
+    function getPrivatelySellCount() external view returns(uint16){
         return _soldPrivately;
     }
 
@@ -176,7 +180,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @notice Returns the breeding counter of the token provided.
      * @param id Is the id of the token to check
      */
-    function getCounterBreeding(uint256 id) view public returns(uint256) {
+    function getCounterBreeding(uint256 id) view external returns(uint256) {
         return _breedingCounter[id];
     }
 
@@ -195,7 +199,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @notice Set a new URI for Rookie ED0 NFT
      * @param _newBaseURI the new URI
      */
-    function setURI(string calldata _newBaseURI) public onlyRole(ADMIN_ROLE) {
+    function setURI(string calldata _newBaseURI) external onlyRole(ADMIN_ROLE) {
         baseURI = _newBaseURI;
     }
 
@@ -217,7 +221,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @param _beneficiary user address
      * @return quantity the total of NFTs booked to the beneficiary
      */
-    function getPrivateSell(address _beneficiary) public view returns (uint256) {
+    function getPrivateSell(address _beneficiary) external view returns (uint256) {
         return _privateSell[_beneficiary];
     }
 
@@ -250,7 +254,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @notice This function mints one Rookie NFT from ed0
      * @param _to The address of minter
      */
-    function mintRookie(address _to) public nonReentrant whenNotPaused {
+    function mintRookie(address _to) external nonReentrant whenNotPaused {
         require(_to != address(0), "RKE0: Address shouldn't be zero");
         require(IERC20(stableCoin).balanceOf(_to) >= price, "USDC: Insufficient funds");
         SafeERC20.safeTransferFrom(IERC20(stableCoin), _to, address(this), price);
@@ -269,7 +273,7 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
      * @notice This function never will be executed
      * @param to the address of the minter 
      */
-    function safeMint(address to) public onlyRole(MINTER_ROLE) {
+    function safeMint(address to) external onlyRole(MINTER_ROLE) {
         uint256 tokenId = _tokenIdCounter.current();
         require(tokenId < _maxSupply - _soldPrivately, "RKE0: Max supply reached");
         _tokenIdCounter.increment();
@@ -278,37 +282,35 @@ contract RookieE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Bu
 
     /**
      * @notice Withdraw funds in stableCoin from this contract to an address
-     * @param _to the address to send the funds
      */
-    function withdrawFunds(address _to) public nonReentrant onlyRole(ADMIN_ROLE) {
-        require(_to != address(0), "RKE0: Address shouldn't be zero");
-        IERC20(stableCoin).transfer(_to, IERC20(stableCoin).balanceOf(address(this)));
+    function withdrawFunds() external nonReentrant onlyRole(ADMIN_ROLE) {
+        require(msg.sender != address(0), "RKE0: Address shouldn't be zero");
+        require(IERC20(stableCoin).transfer(msg.sender, IERC20(stableCoin).balanceOf(address(this))));
     }
 
     /**
      * @notice Withdraw native funds in wei from this contract to an address
      * @dev This PS contract should never have an wei balance (JIC)
-     * @param _to the address to send the funds
      */
-    function nativeWithdraw(address _to) public payable nonReentrant onlyRole(ADMIN_ROLE) {
-        require(_to != address(0), "RKE0: Address shouldn't be zero");
-        payable(_to).transfer(address(this).balance);
+    function nativeWithdraw() external payable nonReentrant onlyRole(ADMIN_ROLE) {
+        require(msg.sender != address(0), "RKE0: Address shouldn't be zero");
+        payable(msg.sender).transfer(address(this).balance);
     }
 
     // **** EXTRA FUNCTIONS SECTION ****
 
     /// @notice Function for pause the contract
-    function pause() public onlyRole(PAUSER_ROLE) whenNotPaused {
+    function pause() external onlyRole(PAUSER_ROLE) whenNotPaused {
         _pause();
     }
 
     /// @notice Function for unpause contract
-    function unpause() public onlyRole(PAUSER_ROLE) whenPaused {
+    function unpause() external onlyRole(PAUSER_ROLE) whenPaused {
         _unpause();
     }
 
     /// @notice Getter of current NFT Id
-    function getCurrentTokenId() public view returns (uint) {
+    function getCurrentTokenId() external view returns (uint) {
         return _tokenIdCounter.current();
     }
 
