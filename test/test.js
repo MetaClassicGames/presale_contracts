@@ -1,5 +1,4 @@
 const { expect } = require("chai");
-const { resolveProperties } = require("ethers/lib/utils");
 const { ethers } = require("hardhat");
 
 let owner, admin, B1, B2, B3, B4, B5;
@@ -16,9 +15,9 @@ let proContract;
 let legendContract;
 
 const rookiePrice = 50;
-// const amateurPrice  = 70;
-// const proPrice      = 100;
-// const legendPrice   = 150;
+const amateurPrice  = 70;
+const proPrice      = 100;
+const legendPrice   = 150;
 
 let te1;
 
@@ -37,14 +36,13 @@ describe("Deploy", function () {
       [owner, admin, B1, B2, B3, B4, B5] = await ethers.getSigners();
 
       beneficiaries = [
-        B1.address,
-        B2.address,
-        B3.address,
-        B4.address,
-        B5.address,
+        B1,
+        B2,
+        B3,
+        B4,
+        B5
       ];
       quantities = Array(beneficiaries.length).fill(quantity);
-      price = 100;
 
       // const days = 1;
       // let today = new Date();
@@ -59,26 +57,33 @@ describe("Deploy", function () {
       // Rookie contract
       const Rookie = await ethers.getContractFactory("RookieE0");
       rookieContract = await Rookie.deploy(
-        beneficiaries,
-        quantities,
         ethers.constants.AddressZero,
-        price
+        ethers.utils.parseEther(rookiePrice.toString())
       );
       rookieContract.deployed();
 
       // Amateur contract
       const Amateur = await ethers.getContractFactory("AmateurE0");
-      amateurContract = await Amateur.deploy();
+      amateurContract = await Amateur.deploy(
+        ethers.constants.AddressZero,
+        ethers.utils.parseEther(amateurPrice.toString())
+      );
       await amateurContract.deployed();
 
       // Pro contract
       const Pro = await ethers.getContractFactory("ProE0");
-      proContract = await Pro.deploy();
+      proContract = await Pro.deploy(
+        ethers.constants.AddressZero,
+        ethers.utils.parseEther(proPrice.toString())
+      );
       await proContract.deployed();
 
       // Legend contract
       const Legend = await ethers.getContractFactory("LegendE0");
-      legendContract = await Legend.deploy();
+      legendContract = await Legend.deploy(
+        ethers.constants.AddressZero,
+        ethers.utils.parseEther(legendPrice.toString())
+      );
       await legendContract.deployed();
     } catch (ex) {
       console.error(ex);
@@ -88,8 +93,8 @@ describe("Deploy", function () {
 });
 
 describe("USDC", function () {
-  const USDCForAccounts = 1000;
-  it("Deposits 1000 USDC into owner address", async function () {
+  const USDCForAccounts = 100000;
+  it("Deposits 100000 USDC into owner address", async function () {
     const amount = await ethers.utils.parseEther(USDCForAccounts.toString());
 
     await usdContract.depositTest(owner.address, amount);
@@ -198,11 +203,6 @@ describe("Presale Contract Test Suite", function () {
   });
 
   it("setEndOfPS fx", async function () {
-    // const days = 60;
-    // let today = new Date();
-    // today = today.addDays(days).getTime();
-    // const newTS = (today - (today % 1000)) / 1000;
-
     // R7 (no timestamp)
     // await expect(
     //   rookieContract.connect(admin).setEndOfPS(false),
@@ -262,7 +262,7 @@ describe("Presale Contract Test Suite", function () {
 
     // Owner
     const ownerBalanceB = await usdContract.balanceOf(owner.address);
-    expect(1000, "Owner balance").to.equal(
+    expect(100000, "Owner balance").to.equal(
       parseInt(ethers.utils.formatEther(ownerBalanceB))
     );
 
@@ -321,7 +321,7 @@ describe("Presale Contract Test Suite", function () {
     expect(
       parseInt(ethers.utils.formatEther(ownerBalanceA)),
       "Owner balance"
-    ).to.equal(950);
+    ).to.equal(99950);
 
     // Balance of owner ERC721
     const balanceExp = 1;
@@ -345,7 +345,7 @@ describe("Presale Contract Test Suite", function () {
   });
 
   it("Should return the URI", async function () {
-    const expected = "https://www.metaclassicgames.com/tokens/ed0/0.json";
+    const expected = "http://vegabuild.es/mcg_tokens/0.json";
     const real = await rookieContract.tokenURI(1);
     expect(expected, "URI").to.equal(real);
   });
@@ -362,45 +362,30 @@ describe("Presale Contract Test Suite", function () {
     expect(newURI, "New URI seted").to.equal(real);
   });
 
-  it("Check beneficiaries", async function () {
-    const expected = 0;
-    // R14
-    expect(
-      await rookieContract.getPrivateSell(owner.address),
-      "Owner is not in the whitelist"
-    ).to.equal(expected);
-
-    // V8
-    for (let index = 0; index < beneficiaries.length; index++) {
-      expect(
-        await rookieContract.getPrivateSell(beneficiaries[index]),
-        "Beneficiaries"
-      ).to.equal(quantity);
-    }
-  });
-
   it("setNewPrivateSell fx", async function () {
-    const new_quantity = 50;
-
     // R15
     await expect(
       rookieContract.setNewPrivateSell(ethers.constants.AddressZero, 1),
       "REVERT: Private sell to address zero"
     ).to.be.revertedWith("RKE0: Address shouldn't be zero");
-    // V9
-    await expect(
-      rookieContract.connect(admin).setNewPrivateSell(admin.address, 50),
-      "Admin added to private sell"
-    ).not.to.be.reverted;
 
-    const real_quantity = await rookieContract.getPrivateSell(admin.address);
-    const new_privatelycount = 150;
+    // V9
+    for (let i = 0; i < beneficiaries.length; i++) {
+      await expect(
+        rookieContract.connect(admin).setNewPrivateSell(beneficiaries[i].address, quantity),
+        "Added to private sell"
+      ).not.to.be.reverted;
+    }
+    
+    const real_quantity = await rookieContract.getPrivateSell(B1.address);
+    const new_privatelycount = 100;
 
     //* Success criteria
     expect(
-      new_quantity,
-      "new quantity to admin added to private sell"
+      quantity,
+      "new quantity to B1 added to private sell"
     ).to.equal(real_quantity);
+
     expect(await rookieContract.getPrivatelySellCount()).to.equal(
       new_privatelycount
     );
@@ -548,5 +533,241 @@ describe("Presale Contract Test Suite", function () {
       rookieContract.connect(B4).setCounterBreeding(3, B4.address),
       "REVERT: setCounterBreeding"
     ).to.be.reverted;
+  });
+
+  it("1 - MAX SUPPLY", async function(){
+    let rookieTotal = rookiePrice * 100;
+    // Approval
+    await expect(
+      usdContract.approve(
+        rookieContract.address,
+        ethers.utils.parseEther(rookieTotal.toString())
+      ),
+      "Mint Approve"
+    ).not.to.be.reverted;
+
+    for (let index = 0; index < 100; index++) {
+      // Mint
+      await expect(
+        rookieContract.mintRookie(owner.address),
+        "Mint Rookie tk0"
+      ).to.emit(rookieContract, "RookieMinted");
+    }
+  });
+
+  it("2 - MAX SUPPLY", async function(){
+    let rookieTotal = rookiePrice * 100;
+    // Approval
+    await expect(
+      usdContract.approve(
+        rookieContract.address,
+        ethers.utils.parseEther(rookieTotal.toString())
+      ),
+      "Mint Approve"
+    ).not.to.be.reverted;
+
+    for (let index = 0; index < 100; index++) {
+      // Mint
+      await expect(
+        rookieContract.mintRookie(owner.address),
+        "Mint Rookie tk0"
+      ).to.emit(rookieContract, "RookieMinted");
+    }
+  });
+
+  it("3 - MAX SUPPLY", async function(){
+    let rookieTotal = rookiePrice * 100;
+    // Approval
+    await expect(
+      usdContract.approve(
+        rookieContract.address,
+        ethers.utils.parseEther(rookieTotal.toString())
+      ),
+      "Mint Approve"
+    ).not.to.be.reverted;
+
+    for (let index = 0; index < 100; index++) {
+      // Mint
+      await expect(
+        rookieContract.mintRookie(owner.address),
+        "Mint Rookie tk0"
+      ).to.emit(rookieContract, "RookieMinted");
+    }
+  });
+
+  it("4 - MAX SUPPLY", async function(){
+    let rookieTotal = rookiePrice * 100;
+    // Approval
+    await expect(
+      usdContract.approve(
+        rookieContract.address,
+        ethers.utils.parseEther(rookieTotal.toString())
+      ),
+      "Mint Approve"
+    ).not.to.be.reverted;
+
+    for (let index = 0; index < 100; index++) {
+      // Mint
+      await expect(
+        rookieContract.mintRookie(owner.address),
+        "Mint Rookie tk0"
+      ).to.emit(rookieContract, "RookieMinted");
+    }
+  });
+
+  it("5 - MAX SUPPLY", async function(){
+    let rookieTotal = rookiePrice * 100;
+    // Approval
+    await expect(
+      usdContract.approve(
+        rookieContract.address,
+        ethers.utils.parseEther(rookieTotal.toString())
+      ),
+      "Mint Approve"
+    ).not.to.be.reverted;
+
+    for (let index = 0; index < 100; index++) {
+      // Mint
+      await expect(
+        rookieContract.mintRookie(owner.address),
+        "Mint Rookie tk0"
+      ).to.emit(rookieContract, "RookieMinted");
+    }
+  });
+
+  it("6 - MAX SUPPLY", async function(){
+    let rookieTotal = rookiePrice * 100;
+    // Approval
+    await expect(
+      usdContract.approve(
+        rookieContract.address,
+        ethers.utils.parseEther(rookieTotal.toString())
+      ),
+      "Mint Approve"
+    ).not.to.be.reverted;
+
+    for (let index = 0; index < 100; index++) {
+      // Mint
+      await expect(
+        rookieContract.mintRookie(owner.address),
+        "Mint Rookie tk0"
+      ).to.emit(rookieContract, "RookieMinted");
+    }
+  });
+
+  it("7 - MAX SUPPLY", async function(){
+    let rookieTotal = rookiePrice * 120;
+    // Approval
+    await expect(
+      usdContract.approve(
+        rookieContract.address,
+        ethers.utils.parseEther(rookieTotal.toString())
+      ),
+      "Mint Approve"
+    ).not.to.be.reverted;
+
+    for (let index = 0; index < 120; index++) {
+      // Mint
+      await expect(
+        rookieContract.mintRookie(owner.address),
+        "Mint Rookie tk0"
+      ).to.emit(rookieContract, "RookieMinted");
+    }
+  });
+
+  it("8 - MAX SUPPLY", async function(){
+    let rookieTotal = rookiePrice * 178;
+    // Approval
+    await expect(
+      usdContract.approve(
+        rookieContract.address,
+        ethers.utils.parseEther(rookieTotal.toString())
+      ),
+      "Mint Approve"
+    ).not.to.be.reverted;
+
+    for (let index = 0; index < 178; index++) {
+      // Mint
+      await expect(
+        rookieContract.mintRookie(owner.address),
+        "Mint Rookie tk0"
+      ).to.emit(rookieContract, "RookieMinted");
+    }
+  });
+
+  it("Should revert when try to mint tokens", async function(){
+    await expect(
+      usdContract.approve(
+        rookieContract.address,
+        ethers.utils.parseEther(rookiePrice.toString())
+      ),
+      "Mint Approve"
+    ).not.to.be.reverted;
+
+    await expect(
+      rookieContract.mintRookie(owner.address),
+      "Mint Rookie tk0"
+    ).to.be.revertedWith("RKE0: Max supply reached");
+  });
+  
+  it("setNewPrivateSell R16", async function(){
+    //900 + 80 reservados = 980
+    await expect(
+      rookieContract.connect(admin).setNewPrivateSell(admin.address, 1),
+      "Added to private sell"
+    ).to.be.revertedWith("RKE0: Max supply reached");
+  });
+
+  it("Private sell to get 1000 tokens minted", async function(){
+    for (let index = 1; index <= 4; index++) {
+      await expect(rookieContract.connect(beneficiaries[index]).doPrivateSell(), "privateSell").not
+      .to.be.reverted;
+    }
+  });
+
+  it("setNewPrivateSell R16", async function(){
+    //1000
+    await expect(
+      rookieContract.connect(admin).setNewPrivateSell(admin.address, 1),
+      "Added to private sell"
+    ).to.be.revertedWith("RKE0: Max supply reached");
+  });
+  
+  it("Should revert when try to mint 1001 tokens", async function(){
+    await expect(
+      usdContract.approve(
+        rookieContract.address,
+        ethers.utils.parseEther(rookiePrice.toString())
+      ),
+      "Mint Approve"
+    ).not.to.be.reverted;
+
+    await expect(
+      rookieContract.mintRookie(owner.address),
+      "Mint Rookie tk0"
+    ).to.be.revertedWith("RKE0: Max supply reached");
+  });
+
+  it("Should pause contract", async function(){
+    // PausableR1
+    await expect(rookieContract.connect(admin).pause()).to.be.reverted;
+
+    const PAUSER_ROLE = ethers.utils.id("PAUSER_ROLE");
+
+    // PausableV1
+    await expect(
+      rookieContract.grantRole(PAUSER_ROLE, admin.address),
+      "ROL ACTIONER is PAUSER"
+    ).not.to.be.reverted;
+
+    await expect(rookieContract.connect(admin).pause()).not.to.be.reverted;
+  });
+
+  it("Mint function paused", async function(){
+    await expect(rookieContract.mintRookie(owner.address)).to.be.revertedWith("Pausable: paused");
+  });
+
+  it("Should unpause contract", async function(){
+    await expect(rookieContract.connect(admin).unpause()).not.to.be.reverted;
   });
 });
