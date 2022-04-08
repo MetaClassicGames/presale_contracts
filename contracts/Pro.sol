@@ -40,7 +40,7 @@ contract ProE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Burna
     // NFT Config
     uint256 public price;
     
-    uint16 private constant MAX_SUPPLY = 1000;
+    uint16 public constant MAX_SUPPLY = 1000;
     uint16 private _soldPrivately;
     IERC20 public stableCoin;
 
@@ -245,7 +245,7 @@ contract ProE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Burna
         
         // Mint
         uint256 tokenId = _tokenIdCounter.current();
-        require(tokenId < MAX_SUPPLY - _soldPrivately, "PRE0: Max supply reached");
+        require(tokenId <= MAX_SUPPLY - _soldPrivately, "PRE0: Max supply reached");
         _tokenIdCounter.increment();     
 
         emit ProMinted(tokenId, to);
@@ -260,7 +260,7 @@ contract ProE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Burna
      */
     function safeMint(address to) external onlyRole(MINTER_ROLE) {
         uint256 tokenId = _tokenIdCounter.current();
-        require(tokenId < MAX_SUPPLY - _soldPrivately, "PRE0: Max supply reached");
+        require(tokenId <= MAX_SUPPLY - _soldPrivately, "PRE0: Max supply reached");
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
     }
@@ -277,7 +277,7 @@ contract ProE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Burna
      * @notice Withdraw native funds in wei from this contract to an address
      * @dev This PS contract should never have an wei balance (JIC)
      */
-    function nativeWithdraw() external payable nonReentrant onlyRole(ADMIN_ROLE) {
+    function nativeWithdraw() external nonReentrant onlyRole(ADMIN_ROLE) {
         require(msg.sender != address(0), "PRE0: Address shouldn't be zero");
         payable(msg.sender).transfer(address(this).balance);
     }
@@ -294,9 +294,9 @@ contract ProE0 is ERC721, ERC721Enumerable, Pausable, AccessControl, ERC721Burna
         _unpause();
     }
 
-    /// @notice Getter of current NFT Id
+    /// @notice Getter of current NFT Id (-1 for initial increment)
     function getCurrentTokenId() external view returns (uint) {
-        return _tokenIdCounter.current();
+        return _tokenIdCounter.current() - 1;
     }
 
     /**
