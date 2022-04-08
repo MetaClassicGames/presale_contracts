@@ -344,24 +344,6 @@ describe("Presale Contract Test Suite", function () {
     ).to.be.reverted;
   });
 
-  it("Should return the URI", async function () {
-    const expected = "http://vegabuild.es/mcg_tokens/0.json";
-    const real = await rookieContract.tokenURI(1);
-    expect(expected, "URI").to.equal(real);
-  });
-
-  it("Should change the URI", async function () {
-    const newURI = "QmSpgXDTNVcwcQRoSHduoTR9ogaFPsd2RqawUuTgAmjUVe";
-    //V7
-    await expect(rookieContract.connect(admin).setURI(newURI), "New URI seted")
-      .not.to.be.reverted;
-
-    const real = await rookieContract.tokenURI(1);
-
-    //* Success criteria
-    expect(newURI, "New URI seted").to.equal(real);
-  });
-
   it("setNewPrivateSell fx", async function () {
     // R15
     await expect(
@@ -676,7 +658,7 @@ describe("Presale Contract Test Suite", function () {
   });
 
   it("8 - MAX SUPPLY", async function(){
-    let rookieTotal = rookiePrice * 178;
+    let rookieTotal = rookiePrice * 179;
     // Approval
     await expect(
       usdContract.approve(
@@ -686,7 +668,7 @@ describe("Presale Contract Test Suite", function () {
       "Mint Approve"
     ).not.to.be.reverted;
 
-    for (let index = 0; index < 178; index++) {
+    for (let index = 0; index < 179; index++) {
       // Mint
       await expect(
         rookieContract.mintRookie(owner.address),
@@ -694,8 +676,10 @@ describe("Presale Contract Test Suite", function () {
       ).to.emit(rookieContract, "RookieMinted");
     }
   });
-
+  
   it("Should revert when try to mint tokens", async function(){
+    console.log(await rookieContract.totalSupply());
+    console.log(await rookieContract.getPrivatelySellCount());
     await expect(
       usdContract.approve(
         rookieContract.address,
@@ -770,4 +754,31 @@ describe("Presale Contract Test Suite", function () {
   it("Should unpause contract", async function(){
     await expect(rookieContract.connect(admin).unpause()).not.to.be.reverted;
   });
+
+  it("Should return the URI", async function () {
+    const expected = "http://vegabuild.es/mcg_tokens/0.json";
+    const real = await rookieContract.tokenURI(1);
+    expect(expected, "URI").to.equal(real);
+  });
+
+  it("Should change the URI", async function () {
+    const newURI = "QmSpgXDTNVcwcQRoSHduoTR9ogaFPsd2RqawUuTgAmjUVe";
+    //V7
+    await expect(rookieContract.connect(admin).setURI(newURI), "New URI seted")
+      .not.to.be.reverted;
+
+    const real = await rookieContract.tokenURI(1);
+
+    //* Success criteria
+    expect(newURI, "New URI seted").to.equal(real);
+  });
+
+  it("Should burn token 1000", async function(){
+    await expect(rookieContract.connect(B5).burn(1001)).to.be.reverted;
+    await expect(rookieContract.connect(B5).burn(1000)).not.to.be.reverted;
+    await expect(rookieContract.connect(B5).burn(999)).not.to.be.reverted;
+    await expect(rookieContract.connect(B5).burn(998)).not.to.be.reverted;
+    await expect(rookieContract.connect(B5).burn(997)).not.to.be.reverted;
+    console.log(await rookieContract.getCurrentTokenId());
+  })
 });
